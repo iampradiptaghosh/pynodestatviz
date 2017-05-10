@@ -39,9 +39,11 @@ from nodedisplaycanvas import  NodeDisplayCanvas
 from nodepropertyframe import NodePropertyFrame
 from . import RenderException
 import os
+from Location import Location
 
 class NodeStatViz(Frame):
     def __init__(self,location=None,parent=None):
+        
         Frame.__init__(self,parent)
 
         self.master.title("Node Statistic Vizualizer")
@@ -131,7 +133,9 @@ class NodeStatViz(Frame):
         self._locations = {}
         self._locationsFile = location
 
+        print("CHECKING FOR LOCATIONS FILE: ", self._locationsFile)
         if os.path.exists(self._locationsFile):
+            print("File Exists")
             locationSchemaXML = dedent('''\
             <xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema'>
               <xs:element name='nodestatviz-locations'>
@@ -168,10 +172,10 @@ class NodeStatViz(Frame):
                 for entry in  locationSchema.error_log:
                     message += "%d: %s\n" % (entry.line,entry.message)
                 print >> sys.stderr, message
-
             for node in locationRoot.xpath('/nodestatviz-locations/nodes/node'):
                 self._locations[node.get('name')]=(float(node.get('x')),
                                                    float(node.get('y')))
+    
             
     def _saveLocations(self,event):
 
@@ -194,6 +198,7 @@ class NodeStatViz(Frame):
 
 
     def update(self,xml):
+        self._nodeDisplayCanvas.clearAllEdges
         os.write(self._pipeWrite,"%05d%s" % (len(xml),xml))
 
     def _render(self,file,mask):
@@ -241,7 +246,7 @@ class NodeStatViz(Frame):
         for node in root.xpath('/nodestatviz/nodes/node'):
             name = node.get('name')
             
-            self._addNode(name,node.get('color'))
+            self._addNode(name,node.get('color'), node.get('x'), node.get('y'))
 
             self._nodes.append(name)
 
@@ -335,13 +340,21 @@ class NodeStatViz(Frame):
         self._nodePropertyFrame.clear()
         self._setStatus("")
 
-    def _addNode(self,name,color):
-        x = 15
-        y = 10
-        
-        if name in self._locations:
-            (x,y) = self._locations[name]
-            
+    def _addNode(self,name,color, xVal, yVal):
+        # a1 = float(self._corners[0].getLat())
+        # b1 = float(self._corners[0].getLon())
+        # a2 = float(self._corners[1].getLat())
+        # b2 = float(self._corners[1].getLon())
+
+
+        # nodeX = float(xVal)
+        # nodeY = float(yVal)
+        # x = float(250*(nodeX-a1)/(a2-a1)) + 20
+        # y = float(250*(nodeY-b1)/(b2-b1)) + 20
+
+
+        x = float(xVal)
+        y = float(yVal)
         self._nodeDisplayCanvas.addNode(name,x,y,color)
 
     def _addEdge(self,source,destination,color,color2,style):

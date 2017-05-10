@@ -43,12 +43,13 @@ class NodeDisplayCanvas(Pmw.ScrolledCanvas):
         self._nodeIdNameMap = {}
         self._selectedNode = None
         self._canvas = self.interior()
+        self._edges = []
 
         self._canvas.configure(background='white')
 
-        self._canvas.tag_bind("node","<B1-Motion>",self._moveNode)
-        self._canvas.tag_bind("node","<Button-1>",self._selectNode)
-        self._canvas.tag_bind("node","<B1-ButtonRelease>",self._deselectNode)
+        # self._canvas.tag_bind("node","<B1-Motion>",self._moveNode)
+        # self._canvas.tag_bind("node","<Button-1>",self._selectNode)
+        # self._canvas.tag_bind("node","<B1-ButtonRelease>",self._deselectNode)
 
     def getNodeLocations(self):
         locations = []
@@ -68,12 +69,34 @@ class NodeDisplayCanvas(Pmw.ScrolledCanvas):
         self._nodes = {}
 
     def addNode(self,name,x,y,color):
-
         if name in self._nodes:
+            # if self._nodes[name]['color'] != color:
+            #     self._canvas.itemconfigure(self._nodes[name]['canvasId'],fill=color)
+            #     self._nodes[name]['color'] = color
 
-            if self._nodes[name]['color'] != color:
-                self._canvas.itemconfigure(self._nodes[name]['canvasId'],fill=color)
-                self._nodes[name]['color'] = color
+            # if float(self._nodes[name]['x']) != x:
+            #     self._canvas.itemconfigure(self._nodes[name]['canvasId'], x=x)
+            #     self._canvas.coords(self._nodes[name]['canvasId'], )
+            #     self._nodes[name]['x'] = x
+            self._canvas.delete("edge-%s" % name)
+            self._canvas.delete(self._nodes[name]['canvasId'])
+            self._canvas.delete(self._nodes[name]['labelId'])
+            self._nodes[name] = \
+                { 
+                'x': x,
+                'y': y,
+                'color' : color,
+                'edges': {},
+                'redges': {},
+                'canvasId' : None,
+                'labelId' : None,
+                }
+
+            # canvasId property set in _drawNode
+            self._drawNode(name)
+
+            self._nodeIdNameMap[self._nodes[name]['canvasId']] = name
+
             
         else:
             self._nodes[name] = \
@@ -84,6 +107,7 @@ class NodeDisplayCanvas(Pmw.ScrolledCanvas):
                 'edges': {},
                 'redges': {},
                 'canvasId' : None,
+                'labelId'  : None,
                 }
 
             # canvasId property set in _drawNode
@@ -113,11 +137,10 @@ class NodeDisplayCanvas(Pmw.ScrolledCanvas):
             self._drawEdge(source,destination,color,color2,style,False)
 
     def deleteEdge(self,source,destination):
-        del self._nodes[source]['edges'][destination]
-
-        del self._nodes[destination]['redges'][source]
-
-        self._canvas.delete("edge-%s_to_%s" % (source,destination))
+        if destination in self._nodes[source]['edges']:
+            del self._nodes[source]['edges'][destination]
+            del self._nodes[destination]['redges'][source]
+            self._canvas.delete("edge-%s_to_%s" % (source,destination))
 
     def _drawEdge(self,source,destination,color,color2,style,force):
         xsrc = self._nodes[source]['x']
@@ -154,7 +177,7 @@ class NodeDisplayCanvas(Pmw.ScrolledCanvas):
         else:
             dash=None
 
-        self._canvas.create_line(xsrc,
+        self._edges.append(self._canvas.create_line(xsrc,
                                  ysrc,
                                  (xsrc + xdst) /2,
                                  (ysrc + ydst) /2,
@@ -166,14 +189,14 @@ class NodeDisplayCanvas(Pmw.ScrolledCanvas):
                                          "edge-%s_to_%s" %(source,destination)),
                                  width=2,
                                  fill = color,
-                                 dash=dash)
+                                 dash=dash))
         
         if style == "solid_to_dash" or style == "dash":
             dash=2
         else:
             dash=None
 
-        self._canvas.create_line((xsrc + xdst) / 2,
+        self._edges.append(self._canvas.create_line((xsrc + xdst) / 2,
                                  (ysrc + ydst) / 2,
                                  xdst,
                                  ydst,
@@ -185,7 +208,7 @@ class NodeDisplayCanvas(Pmw.ScrolledCanvas):
                                          "edge-%s_to_%s" %(source,destination)),
                                  dash=dash,
                                  width=2,
-                                 fill = color2)
+                                 fill = color2))
 
         
         self._canvas.tag_lower('edge','label')
@@ -194,6 +217,7 @@ class NodeDisplayCanvas(Pmw.ScrolledCanvas):
     def _redrawEdges(self,name):
         
         self._canvas.delete("edge-%s" % name)
+
         
         for destination in self._nodes[name]['edges']:
             self._drawEdge(name,
@@ -211,6 +235,9 @@ class NodeDisplayCanvas(Pmw.ScrolledCanvas):
                            self._nodes[source]['edges'][name]['style'],
                            True)
             
+    def clearAllEdges(self):
+        for edge in self._edges:
+            self._canvas.delete(edge)
 
     def _drawNode(self,name):
         x = self._nodes[name]['x']
@@ -224,8 +251,8 @@ class NodeDisplayCanvas(Pmw.ScrolledCanvas):
                                                      y+5,
                                                      fill = color,
                                                      tags = (str(name),'node',"node-%s" % name))
-
-        self._canvas.create_text(x,
+        self._nodes[name]['labelId'] = \
+            labelId = self._canvas.create_text(x,
                                  y+15,
                                  text=name,
                                  tags = (str(name),'label',"label-%s" % name))
